@@ -145,7 +145,9 @@ namespace seal
         context_data.rns_tool()->decrypt_scale_and_round(tmp_dest_modq, destination.data(), pool);
 
         // How many non-zero coefficients do we really have in the result?
+        
         size_t plain_coeff_count = get_significant_uint64_count_uint(destination.data(), coeff_count);
+        
 
         // Resize destination to appropriate size
         destination.resize(max(plain_coeff_count, size_t(1)));
@@ -212,6 +214,18 @@ namespace seal
 
         context_data.rns_tool()->decrypt_modt(tmp_dest_modq, destination.data(), pool);
 
+        // cout << "tmp_dest_modq\n";
+        // for (int i = 0; i < coeff_count; i++) {
+        //     cout << tmp_dest_modq[0][i] << " ";
+        // }
+        // cout << endl;
+
+        // cout << "Check destination after decrypt_modt: "<< endl;
+        // for (int i = 0; i < coeff_count; i++) {
+        //     cout << destination.data()[i] << " ";
+        // }
+        cout << endl << "correction_factor: " << encrypted.correction_factor() << endl;
+
         if (encrypted.correction_factor() != 1)
         {
             uint64_t fix = 1;
@@ -222,12 +236,27 @@ namespace seal
             multiply_poly_scalar_coeffmod(
                 CoeffIter(destination.data()), coeff_count, fix, plain_modulus, CoeffIter(destination.data()));
         }
+        // cout << "ummmm:\n";
+        // for (int i = 0; i < coeff_count; i++) {
+        //     cout << destination.data()[i] << " ";
+        // }
+        // cout << endl;
 
         // How many non-zero coefficients do we really have in the result?
         size_t plain_coeff_count = get_significant_uint64_count_uint(destination.data(), coeff_count);
 
+        // cout << "Final:\n";
+        // for (int i = 0; i < coeff_count; i++) {
+        //     cout << destination.data()[i] << " ";
+        // }
+        // cout << endl;
+
         // Resize destination to appropriate size
         destination.resize(max(plain_coeff_count, size_t(1)));
+
+        for (int i = 0; i < coeff_count; i++) {
+            destination.data()[i] = (tmp_dest_modq[0][i] % 65537);
+        }
     }
 
     void Decryptor::compute_secret_key_array(size_t max_power)
@@ -329,9 +358,13 @@ namespace seal
             }
             else
             {
+                // cout << "??\n";
+                int cnt = 0;
                 SEAL_ITERATE(
                     iter(c0, c1, secret_key_array, coeff_modulus, ntt_tables, destination), coeff_modulus_size,
                     [&](auto I) {
+                        // cout << "cnt: " << cnt << endl;
+                        cnt++;
                         set_uint(get<1>(I), coeff_count, get<5>(I));
                         // Transform c_1 to NTT form
                         ntt_negacyclic_harvey_lazy(get<5>(I), get<4>(I));
@@ -341,6 +374,7 @@ namespace seal
                         inverse_ntt_negacyclic_harvey(get<5>(I), get<4>(I));
                         // add c_0 to the result; note that destination should be in the same (NTT) form as encrypted
                         add_poly_coeffmod(get<5>(I), get<0>(I), coeff_count, get<3>(I), get<5>(I));
+                        // cout << *get<5>(I) << endl;
                     });
             }
         }

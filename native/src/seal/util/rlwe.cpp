@@ -18,6 +18,64 @@ namespace seal
 {
     namespace util
     {
+
+        void sample_poly_ternary_with_zero(
+            shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms, uint64_t *destination,
+            const int zero_threshold)
+        {
+            auto coeff_modulus = parms.coeff_modulus();
+            size_t coeff_modulus_size = coeff_modulus.size();
+            size_t coeff_count = parms.poly_modulus_degree();
+
+            RandomToStandardAdapter engine(prng);
+            uniform_int_distribution<uint64_t> dist(0, 2);
+
+            int count = 0;
+            SEAL_ITERATE(iter(destination), coeff_count, [&](auto &I) {
+                uint64_t rand = dist(engine);
+                if (count >= zero_threshold) {
+                    rand = 1;
+                }
+                count += 1;
+                uint64_t flag = static_cast<uint64_t>(-static_cast<int64_t>(rand == 0));
+                SEAL_ITERATE(
+                    iter(StrideIter<uint64_t *>(&I, coeff_count), coeff_modulus), coeff_modulus_size,
+                    [&](auto J) { *get<0>(J) = rand + (flag & get<1>(J).value()) - 1; });
+            });
+        }
+
+        void sample_poly_ternary_with_zero(
+            shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms, uint64_t *destination,
+            const int zero_threshold, const int sparse_count)
+        {
+            auto coeff_modulus = parms.coeff_modulus();
+            size_t coeff_modulus_size = coeff_modulus.size();
+            size_t coeff_count = parms.poly_modulus_degree();
+
+            RandomToStandardAdapter engine(prng), index_engine(prng);
+            uniform_int_distribution<uint64_t> dist(0, 2), index_dist(0, zero_threshold-1);
+
+            int count = 0;
+            vector<int> rand(coeff_count, 1);
+            while (count < sparse_count) {
+                int value = dist(engine);
+                if (value != 1) {
+                    int index = index_dist(index_engine);
+                    rand[index] = value;
+                    count += 1;
+                }
+            }
+
+            count = 0;
+            SEAL_ITERATE(iter(destination), coeff_count, [&](auto &I) {
+                uint64_t flag = static_cast<uint64_t>(-static_cast<int64_t>(rand[count] == 0));
+                SEAL_ITERATE(
+                    iter(StrideIter<uint64_t *>(&I, coeff_count), coeff_modulus), coeff_modulus_size,
+                    [&](auto J) { *get<0>(J) = rand[count] + (flag & get<1>(J).value()) - 1; });
+                count += 1;
+            });
+        }
+
         void sample_poly_ternary(
             shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms, uint64_t *destination)
         {

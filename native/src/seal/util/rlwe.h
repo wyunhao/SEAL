@@ -26,6 +26,15 @@ namespace seal
             std::shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms,
             std::uint64_t *destination);
 
+
+        void sample_poly_ternary_with_zero(
+            std::shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms,
+            std::uint64_t *destination, int zero_threshold);
+
+
+        void sample_poly_ternary_with_zero(
+            std::shared_ptr<UniformRandomGenerator> prng, const EncryptionParameters &parms,
+            std::uint64_t *destination, int zero_threshold, int sparse_count);
         /**
         Generate a polynomial from a normal distribution and store in RNS representation.
 

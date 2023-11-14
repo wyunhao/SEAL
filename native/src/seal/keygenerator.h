@@ -38,6 +38,9 @@ namespace seal
         */
         KeyGenerator(const SEALContext &context);
 
+        KeyGenerator(const SEALContext &context, int zero_threshold);
+
+        KeyGenerator(const SEALContext &context, int zero_threshold, int sparse_count);
         /**
         Creates an KeyGenerator instance initialized with the specified SEALContext
         and specified previously secret key. This can e.g. be used to increase
@@ -295,6 +298,35 @@ namespace seal
         */
         struct KeyGeneratorPrivateHelper;
 
+        /**
+        Generates new key switching keys for an array of new keys.
+        */
+        void generate_kswitch_keys(
+            util::ConstPolyIter new_keys, std::size_t num_keys, KSwitchKeys &destination, bool save_seed = false);
+
+        /**
+        Generates one key switching key for a new key.
+        */
+        void generate_one_kswitch_key(
+            util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed = false);
+
+        SecretKey secret_key_;
+
+
+        /**
+        Generates new secret key.
+
+        @param[in] is_initialized True if the secret key has already been
+        initialized so that only the secret_key_array_ should be initialized, for
+        example, if the secret key was provided in the constructor
+        */
+        void generate_sk(bool is_initialized = false);
+
+        void generate_sk_with_zero(int zero_threshold);
+
+        void generate_sk_with_zero(int zero_threshold, int sparse_count);
+
+
     private:
         KeyGenerator(const KeyGenerator &copy) = delete;
 
@@ -307,30 +339,9 @@ namespace seal
         void compute_secret_key_array(const SEALContext::ContextData &context_data, std::size_t max_power);
 
         /**
-        Generates new secret key.
-
-        @param[in] is_initialized True if the secret key has already been
-        initialized so that only the secret_key_array_ should be initialized, for
-        example, if the secret key was provided in the constructor
-        */
-        void generate_sk(bool is_initialized = false);
-
-        /**
         Generates new public key matching to existing secret key.
         */
         PublicKey generate_pk(bool save_seed) const;
-
-        /**
-        Generates new key switching keys for an array of new keys.
-        */
-        void generate_kswitch_keys(
-            util::ConstPolyIter new_keys, std::size_t num_keys, KSwitchKeys &destination, bool save_seed = false);
-
-        /**
-        Generates one key switching key for a new key.
-        */
-        void generate_one_kswitch_key(
-            util::ConstRNSIter new_key, std::vector<PublicKey> &destination, bool save_seed = false);
 
         /**
         Generates and returns the specified number of relinearization keys.
@@ -367,7 +378,6 @@ namespace seal
 
         SEALContext context_;
 
-        SecretKey secret_key_;
 
         std::size_t secret_key_array_size_ = 0;
 

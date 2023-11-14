@@ -325,6 +325,8 @@ namespace seal
             return pool_;
         }
 
+        parms_id_type parms_id_ = parms_id_zero;
+
     private:
         void save_members(std::ostream &stream) const;
 
@@ -332,7 +334,6 @@ namespace seal
 
         MemoryPoolHandle pool_ = MemoryManager::GetPool();
 
-        parms_id_type parms_id_ = parms_id_zero;
 
         /**
         The vector of keyswitching keys.

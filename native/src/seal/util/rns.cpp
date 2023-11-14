@@ -468,6 +468,7 @@ namespace seal
             size_t ibase_size = ibase_.size();
             size_t obase_size = obase_.size();
             size_t count = in.poly_modulus_degree();
+            // cout << "ibase_size: " << ibase_size << endl;
 
             if (obase_size != 1)
             {
@@ -483,6 +484,12 @@ namespace seal
             // Aggregated rounded v
             SEAL_ALLOCATE_GET_PTR_ITER(aggregated_rounded_v, uint64_t, count, pool);
 
+            // cout << "ibase_.base() :" << (uint64_t) static_cast<double_t>((*ibase_.base()).value()) << endl;
+            // for (int i = 0; i < ibase_size; i++) {
+            //     cout << *ibase_.inv_punctured_prod_mod_base_array() << endl;
+            // }
+            
+
             // Calculate [x_{i} * \hat{q_{i}}]_{q_{i}}
             SEAL_ITERATE(
                 iter(in, ibase_.inv_punctured_prod_mod_base_array(), ibase_.base(), size_t(0)), ibase_size,
@@ -490,7 +497,7 @@ namespace seal
                     // The current ibase index
                     size_t ibase_index = get<3>(I);
                     double_t divisor = static_cast<double_t>(get<2>(I).value());
-
+                    // cout << "ibase_index: " << ibase_index << endl;
                     if (get<1>(I).operand == 1)
                     {
                         // No multiplication needed
@@ -508,10 +515,18 @@ namespace seal
                             // Multiply coefficient of in with ibase_.inv_punctured_prod_mod_base_array_ element
                             get<1>(J)[ibase_index] = multiply_uint_mod(get<0>(J), get<1>(I), get<2>(I));
                             double_t dividend = static_cast<double_t>(get<1>(J)[ibase_index]);
+                            // cout << "dividend: " << (uint64_t) dividend << endl;
                             get<2>(J)[ibase_index] = dividend / divisor;
                         });
                     }
                 });
+            // cout << "v-------\n";
+            // for (int i = 0; i < count; i ++) {
+            //     cout << *v[i] << " ";
+            // }
+            // cout << endl;
+            
+
 
             // Aggrate v and rounding
             SEAL_ITERATE(iter(v, aggregated_rounded_v), count, [&](auto I) {
@@ -525,10 +540,22 @@ namespace seal
                 get<1>(I) = static_cast<uint64_t>(aggregated_v);
             });
 
+            // cout << "aggregated_rounded_v-------\n";
+            // for (int i = 0; i < count; i ++) {
+            //     cout << aggregated_rounded_v[i] << " ";
+            // }
+            // cout << endl;
+
             auto p = obase_.base()[0];
             auto q_mod_p = modulo_uint(ibase_.base_prod(), ibase_size, p);
             auto base_change_matrix_first = base_change_matrix_[0].get();
             // Final multiplication
+            // cout << "temp-------\n";
+            // for (int i = 0; i < count; i ++) {
+            //     cout << *temp[i] << " ";
+            // }
+            // cout << endl;
+
             SEAL_ITERATE(iter(out, temp, aggregated_rounded_v), count, [&](auto J) {
                 // Compute the base conversion sum modulo obase element
                 auto sum_mod_obase = dot_product_mod(get<1>(J), base_change_matrix_first, ibase_size, p);
@@ -1221,15 +1248,39 @@ namespace seal
                     neg_c_last_mod_t, coeff_count_, inv_q_last_mod_t_, plain_modulus, neg_c_last_mod_t);
             }
 
+            ///////////////////// -c0 % 65537
+            cout << "inv_q_last_mod_t_: " << inv_q_last_mod_t_ << " and mod: ";
+            for (int i = 0; i < coeff_count_; i++) {
+                cout << neg_c_last_mod_t[i] << " ";
+            }
+            cout << endl;
+
             SEAL_ALLOCATE_ZERO_GET_COEFF_ITER(delta_mod_q_i, coeff_count_, pool);
 
             SEAL_ITERATE(iter(input, curr_modulus, inv_q_last_mod_q_, rns_ntt_tables), modulus_size - 1, [&](auto I) {
                 // delta_mod_q_i = neg_c_last_mod_t (mod q_i)
                 modulo_poly_coeffs(neg_c_last_mod_t, coeff_count_, get<1>(I), delta_mod_q_i);
 
-                // delta_mod_q_i *= q_last (mod q_i)
+                //////////////////// delta = -c0 % 65537
+
+                cout << "qi: " << curr_modulus->value() << " and mod: ";
+                cout << "after modulo_poly_coeffs\n";
+                for (int i = 0; i < coeff_count_; i++) {
+                    cout << delta_mod_q_i[i] << " ";
+                }
+                cout << endl;
+
                 multiply_poly_scalar_coeffmod(
                     delta_mod_q_i, coeff_count_, last_modulus_value, get<1>(I), delta_mod_q_i);
+
+                cout << "last_modulus_value: " << last_modulus_value << endl;
+                for (int i = 0; i < coeff_count_; i++) {
+                    cout << delta_mod_q_i[i] << " ";
+                }
+                cout << endl;
+
+                //////////////////// delta *= q_last (mod q_i)
+
 
                 // c_i = c_i - c_last - neg_c_last_mod_t * q_last (mod 2q_i)
                 SEAL_ITERATE(iter(delta_mod_q_i, c_last), coeff_count_, [&](auto J) {
@@ -1239,8 +1290,15 @@ namespace seal
                 SEAL_ITERATE(iter(get<0>(I), delta_mod_q_i), coeff_count_, [&](auto J) {
                     get<0>(J) = sub_uint_mod(get<0>(J), get<1>(J), get<1>(I));
                 });
+                cout << endl;
+
 
                 // c_i = c_i * inv_q_last_mod_q_i (mod q_i)
+                // cout << "inv_q_last_mod_q_: " << endl;
+                // for (int i = 0; i < coeff_count_; i++) {
+                //     cout >> inv_q_last_mod_q_[i] << " ";
+                // }
+                // cout << endl;
                 multiply_poly_scalar_coeffmod(get<0>(I), coeff_count_, get<2>(I), get<1>(I), get<0>(I));
             });
         }

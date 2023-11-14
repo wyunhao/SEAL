@@ -1297,6 +1297,12 @@ namespace seal
         */
         struct EvaluatorPrivateHelper;
 
+
+        void switch_key_inplace(
+            Ciphertext &encrypted, util::ConstRNSIter target_iter, const KSwitchKeys &kswitch_keys,
+            std::size_t key_index, MemoryPoolHandle pool = MemoryManager::GetPool()) const;
+
+
     private:
         Evaluator(const Evaluator &copy) = delete;
 
@@ -1354,10 +1360,6 @@ namespace seal
             // Perform rotation and key switching
             apply_galois_inplace(encrypted, galois_tool->get_elt_from_step(0), galois_keys, std::move(pool));
         }
-
-        void switch_key_inplace(
-            Ciphertext &encrypted, util::ConstRNSIter target_iter, const KSwitchKeys &kswitch_keys,
-            std::size_t key_index, MemoryPoolHandle pool = MemoryManager::GetPool()) const;
 
         void multiply_plain_normal(Ciphertext &encrypted, const Plaintext &plain, MemoryPoolHandle pool) const;
 

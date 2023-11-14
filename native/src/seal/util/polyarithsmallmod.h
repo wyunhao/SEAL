@@ -496,6 +496,7 @@ namespace seal
                 throw std::invalid_argument("incompatible iterators");
             }
 #endif
+            std::cout << "scalar: " << scalar << std::endl;
             auto coeff_modulus_size = result.coeff_modulus_size();
             SEAL_ITERATE(iter(poly_array, result), size, [&](auto I) {
                 multiply_poly_scalar_coeffmod(get<0>(I), coeff_modulus_size, scalar, modulus, get<1>(I));

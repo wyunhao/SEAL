@@ -33,6 +33,38 @@ namespace seal
         generate_sk();
     }
 
+    KeyGenerator::KeyGenerator(const SEALContext &context, const int zero_theshold) : context_(context)
+    {
+        // Verify parameters
+        if (!context_.parameters_set())
+        {
+            throw invalid_argument("encryption parameters are not set correctly");
+        }
+
+        // Secret key has not been generated
+        sk_generated_ = false;
+
+        // Generate the secret and public key
+        generate_sk_with_zero(zero_theshold);
+    }
+
+
+    KeyGenerator::KeyGenerator(const SEALContext &context, const int zero_theshold, const int sparse_count) : context_(context)
+    {
+        // Verify parameters
+        if (!context_.parameters_set())
+        {
+            throw invalid_argument("encryption parameters are not set correctly");
+        }
+
+        // Secret key has not been generated
+        sk_generated_ = false;
+
+        // Generate the secret and public key
+        generate_sk_with_zero(zero_theshold, sparse_count);
+    }
+
+
     KeyGenerator::KeyGenerator(const SEALContext &context, const SecretKey &secret_key) : context_(context)
     {
         // Verify parameters
@@ -52,6 +84,78 @@ namespace seal
         // Generate the public key
         generate_sk(sk_generated_);
     }
+
+
+    void KeyGenerator::generate_sk_with_zero(int zero_theshold)
+    {
+        // Extract encryption parameters.
+        auto &context_data = *context_.key_context_data();
+        auto &parms = context_data.parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+
+        // Initialize secret key.
+        secret_key_ = SecretKey();
+        sk_generated_ = false;
+        secret_key_.data().resize(mul_safe(coeff_count, coeff_modulus_size));
+
+        // Generate secret key
+        RNSIter secret_key(secret_key_.data().data(), coeff_count);
+        sample_poly_ternary_with_zero(parms.random_generator()->create(), parms, secret_key, zero_theshold);
+
+        // Transform the secret s into NTT representation.
+        auto ntt_tables = context_data.small_ntt_tables();
+        ntt_negacyclic_harvey(secret_key, coeff_modulus_size, ntt_tables);
+
+        // Set the parms_id for secret key
+        secret_key_.parms_id() = context_data.parms_id();
+
+        // Set the secret_key_array to have size 1 (first power of secret)
+        secret_key_array_ = allocate_poly(coeff_count, coeff_modulus_size, pool_);
+        set_poly(secret_key_.data().data(), coeff_count, coeff_modulus_size, secret_key_array_.get());
+        secret_key_array_size_ = 1;
+
+        // Secret key has been generated
+        sk_generated_ = true;
+    }
+
+
+    void KeyGenerator::generate_sk_with_zero(int zero_theshold, int sparse_count)
+    {
+        // Extract encryption parameters.
+        auto &context_data = *context_.key_context_data();
+        auto &parms = context_data.parms();
+        auto &coeff_modulus = parms.coeff_modulus();
+        size_t coeff_count = parms.poly_modulus_degree();
+        size_t coeff_modulus_size = coeff_modulus.size();
+
+        // Initialize secret key.
+        secret_key_ = SecretKey();
+        sk_generated_ = false;
+        secret_key_.data().resize(mul_safe(coeff_count, coeff_modulus_size));
+
+        // Generate secret key
+        RNSIter secret_key(secret_key_.data().data(), coeff_count);
+        sample_poly_ternary_with_zero(parms.random_generator()->create(), parms, secret_key, zero_theshold, sparse_count);
+
+        // Transform the secret s into NTT representation.
+        auto ntt_tables = context_data.small_ntt_tables();
+        ntt_negacyclic_harvey(secret_key, coeff_modulus_size, ntt_tables);
+
+        // Set the parms_id for secret key
+        secret_key_.parms_id() = context_data.parms_id();
+
+        // Set the secret_key_array to have size 1 (first power of secret)
+        secret_key_array_ = allocate_poly(coeff_count, coeff_modulus_size, pool_);
+        set_poly(secret_key_.data().data(), coeff_count, coeff_modulus_size, secret_key_array_.get());
+        secret_key_array_size_ = 1;
+
+        // Secret key has been generated
+        sk_generated_ = true;
+    }
+
+
 
     void KeyGenerator::generate_sk(bool is_initialized)
     {
