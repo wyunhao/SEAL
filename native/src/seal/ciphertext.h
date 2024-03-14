@@ -681,6 +681,8 @@ namespace seal
         */
         struct CiphertextPrivateHelper;
 
+      parms_id_type parms_id_ = parms_id_zero;
+
     private:
         void reserve_internal(
             std::size_t size_capacity, std::size_t poly_modulus_degree, std::size_t coeff_modulus_size);
@@ -697,8 +699,6 @@ namespace seal
         {
             return (data_.size() && (size_ == 2)) ? (data(1)[0] == 0xFFFFFFFFFFFFFFFFULL) : false;
         }
-
-        parms_id_type parms_id_ = parms_id_zero;
 
         bool is_ntt_form_ = false;
 
